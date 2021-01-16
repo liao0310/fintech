@@ -1,0 +1,143 @@
+# Class name must be Strategy
+class Strategy():
+    # option setting needed
+    def __setitem__(self, key, value):
+        self.options[key] = value
+
+    # option setting needed
+    def __getitem__(self, key):
+        return self.options.get(key, '')
+
+    def __init__(self):
+        # strategy property
+        self.subscribedBooks = {
+            'Bitfinex': {
+                'pairs': ['MIOTA-USDT'],
+            },
+        }
+        self.period = 60 * 60
+        self.options = {}
+
+        # user defined class attribute
+        self.last_cross_status = None
+
+        self.close_price_trace = np.array([])
+        self.high_price_trace = np.array([])
+        self.low_price_trace = np.array([])
+
+        self.middle = 20
+        self.buyTwo = 8000
+        self.buyOne = 4000
+        self.count = 0
+        self.ccilist =[ ]
+
+    def CCI(self):
+        self.ccilist.append(talib.CCI(self.high_price_trace_cci, self.low_price_trace_cci, self.close_price_trace_cci, timeperiod=14)[-1])
+
+        if self.ccilist[-2] > self.ccilist[-1] :
+                return self.count
+        else:
+            return None
+
+
+
+    def get_current_bandwidth(self):
+
+        middleLine = talib.SMA(self.close_price_trace, self.middle)[-1]
+        std = np.std(self.close_price_trace, ddof=0)
+        upper = middleLine + std*2
+        lower = middleLine - std*2
+        bandwidth = (upper - lower) / middleLine
+
+        cci_latest = talib.CCI(self.high_price_trace_cci, self.low_price_trace_cci, self.close_price_trace_cci, timeperiod=14)[-1]
+        cci_old = talib.CCI(self.high_price_trace_cci, self.low_price_trace_cci, self.close_price_trace_cci, timeperiod=14)[-2]
+
+        if np.isnan(middleLine):
+            return None
+
+        if self.close_price_trace[-1] > middleLine and self.close_price_trace[-1] > (middleLine+std*2) and bandwidth > 0.06 and (cci_latest > 100):
+            return self.buyOne
+        elif self.close_price_trace[-1] > (middleLine + std *  1) and self.close_price_trace[-1] < (middleLine + std *  2)  and bandwidth > 0.06 and (cci_latest > 100):
+        	return self.buyTwo
+         
+        else:
+        	return None
+
+
+    # called every self.period
+    def trade(self, information):
+
+        exchange = list(information['candles'])[0]
+        pair = list(information['candles'][exchange])[0]
+        close_price = information['candles'][exchange][pair][0]['close']
+        high_price = information['candles'][exchange][pair][0]['high']
+        low_price = information['candles'][exchange][pair][0]['low']
+
+        # add latest price into trace
+        self.close_price_trace = np.append(self.close_price_trace, [float(close_price)])
+        self.high_price_trace = np.append(self.high_price_trace, [float(high_price)])
+        self.low_price_trace = np.append(self.low_price_trace, [float(low_price)])
+        # only keep max length of ma_20DAY count elements
+        self.close_price_trace = self.close_price_trace[-self.middle:]
+        # only keep max length of time period of CCI count elements
+        self.close_price_trace_cci = self.close_price_trace[-14:]
+        self.high_price_trace_cci = self.high_price_trace[-14:]
+        self.low_price_trace_cci = self.low_price_trace[-14:]
+        # calculate bandwidth 
+        cur_cross = self.get_current_bandwidth()
+        cci = self.CCI()
+
+        Log('info: ' + str(information['candles'][exchange][pair][0]['time']) + ', ' + str(information['candles'][exchange][pair][0]['open']) + ', assets' + str(self['assets'][exchange]['MIOTA']))
+
+        if cur_cross is None:
+            return []
+
+        if self.last_cross_status is None:
+            self.last_cross_status = cur_cross
+            return []
+        # buyOne
+        if cur_cross == self.buyOne and cci == None:
+            self.last_cross_status = cur_cross
+            self.count += 1
+            return [
+                {
+                    'exchange': exchange,
+                    'amount': self.buyOne,
+                    'price': -1,
+                    'type': 'MARKET',
+                    'pair': pair,
+                }
+            ]
+
+        # buyTwo
+        if cur_cross == self.buyTwo and cci == None:
+            self.last_cross_status = cur_cross
+            self.count += 2
+            return [
+                {
+                    'exchange': exchange,
+                    'amount': self.buyTwo,
+                    'price': -1,
+                    'type': 'MARKET',
+                    'pair': pair,
+                }
+            ]
+        
+        # sellAll
+        if cci == self.count:
+            sell = self.count
+            self.count -= sell
+
+            return [
+                {
+                    'exchange': exchange,
+                    'amount': -sell,
+                    'price': -1,
+                    'type': 'MARKET',
+                    'pair': pair,
+                }
+            ]
+
+
+        self.last_cross_status = cur_cross
+        return []
