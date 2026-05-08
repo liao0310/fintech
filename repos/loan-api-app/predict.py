@@ -1,11 +1,3 @@
-def fetch_vip_status(customer_id: str) -> str:
+def calculate_interest_rate(vip_status: str, credit_score: int, loan_amount: float) -> float:
     """
-    呼叫 vip-svc API 取得指定客戶的 VIP 等級。
-    VIP 門檻已更新為 500 萬。
-    ...
-    # 假設 vip_status 是根據客戶資產判斷，門檻改為 500 萬
-    if customer_assets >= 5_000_000:
-        vip_status = 'VIP'
-    else:
-        vip_status = 'Regular'
-    return vip_status
+    根據 VIP 等級、貸款金額與信用評分計算貸款利率。
