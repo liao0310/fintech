@@ -1,2 +1,7 @@
-VIP_THRESHOLD: float = 5_000_000  # VIP 門檻（新台幣）
-annual_income: float      # 年收入（新台幣）
+VIP_THRESHOLD = 5000000
+
+response = _session.post(
+    endpoint,
+    json={"customer_id": customer_id, "vip_threshold": VIP_THRESHOLD},
+    timeout=VIP_SVC_TIMEOUT,
+)
