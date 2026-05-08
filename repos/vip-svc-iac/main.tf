@@ -1,1 +1,4 @@
-vip_threshold_aum = 5000000
+env {
+  name  = "VIP_THRESHOLD_AUM"
+  value = "5000000"
+}
