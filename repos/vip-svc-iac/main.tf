@@ -120,5 +120,5 @@ output "vip_svc_url" {
 
 output "vip_threshold_aum" {
   description = "VIP 判斷門檻值"
-  value       = local.vip_threshold_aum
+  value       = 5000000
 }
