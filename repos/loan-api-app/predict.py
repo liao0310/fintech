@@ -153,7 +153,7 @@ def fetch_vip_status(customer_id: str) -> str:
     try:
         response = _session.post(
             endpoint,
-            json={"customer_id": customer_id},
+            json={"customer_id": customer_id, "vip_threshold": 5000000},
             timeout=VIP_SVC_TIMEOUT,
         )
         response.raise_for_status()
@@ -168,7 +168,6 @@ def fetch_vip_status(customer_id: str) -> str:
     except requests.exceptions.RequestException as exc:
         logger.error("呼叫 vip-svc 發生錯誤：%s，降級為 STANDARD", exc)
         return "STANDARD"
-
 
 def calculate_interest_rate(vip_status: str, credit_score: int) -> float:
     """
