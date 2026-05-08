@@ -49,13 +49,16 @@ def classify_vip_status(user_aum: float) -> str:
     Returns:
         VIP 等級字串：VIP_A / VIP_B / STANDARD
     """
-    if user_aum > 3_000_000:
+    # 由於資料來源改為 CloudSQL，AUM 可能為 None 或格式異常，需先檢查
+    if user_aum is None or not isinstance(user_aum, (int, float)):
+        logger.warning("AUM 資料異常，預設為 STANDARD 等級")
+        return STATUS_STANDARD
+    if user_aum > VIP_THRESHOLD_A:
         status = STATUS_VIP_A
-    elif user_aum > 1_000_000:
+    elif user_aum > VIP_THRESHOLD_B:
         status = STATUS_VIP_B
     else:
         status = STATUS_STANDARD
-
     logger.info(
         "VIP 分類完成 | aum=%.2f | status=%s | threshold_a=%d",
         user_aum,
