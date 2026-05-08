@@ -55,7 +55,7 @@ class LoanApplication:
     customer_id: str
     requested_amount: float   # 申請金額（新台幣）
     credit_score: int
-    annual_income: float      # 年收入（新台幣）
+    vip_threshold: float = 5000000  # VIP 門檻改為 500 萬（新台幣）
 
 
 @dataclass
