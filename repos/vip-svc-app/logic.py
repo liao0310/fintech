@@ -12,7 +12,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ── VIP 分級門檻常數 (AUM 單位：新台幣) ─────────────────────
-VIP_THRESHOLD_A = 3_000_000   # 300 萬以上 → VIP_A
+VIP_THRESHOLD_A = 5_000_000   # 500 萬以上 → VIP_A
 VIP_THRESHOLD_B = 1_000_000   # 100 萬以上 → VIP_B
 STATUS_VIP_A    = "VIP_A"
 STATUS_VIP_B    = "VIP_B"
@@ -49,11 +49,12 @@ def classify_vip_status(user_aum: float) -> str:
     Returns:
         VIP 等級字串：VIP_A / VIP_B / STANDARD
     """
-    if user_aum > 3_000_000:
+    if user_aum > 5_000_000:
         status = STATUS_VIP_A
     elif user_aum > 1_000_000:
         status = STATUS_VIP_B
     else:
+        status = STATUS_STANDARD
         status = STATUS_STANDARD
 
     logger.info(
