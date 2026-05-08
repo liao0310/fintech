@@ -1,7 +1,1 @@
-VIP_THRESHOLD = 5000000
-
-response = _session.post(
-    endpoint,
-    json={"customer_id": customer_id, "vip_threshold": VIP_THRESHOLD},
-    timeout=VIP_SVC_TIMEOUT,
-)
+def calculate_interest_rate(vip_status: str, credit_score: int, vip_threshold: int = 5000000) -> float:
