@@ -22,6 +22,9 @@ locals {
   base_rate_vip_b    = 2.2
   base_rate_standard = 3.8
 
+  # VIP 門檻設定（單位：百萬元）
+  vip_threshold_million = 500
+
   # 內部服務連線
   vip_svc_internal_url = "https://vip-svc-internal.asia-east1.run.app"
 }
@@ -59,6 +62,10 @@ resource "google_cloud_run_v2_service" "loan_api" {
       env {
         name  = "BASE_RATE_STANDARD"
         value = tostring(local.base_rate_standard)
+      }
+      env {
+        name  = "VIP_THRESHOLD_MILLION"
+        value = tostring(local.vip_threshold_million)
       }
       env {
         name  = "BQ_TABLE_LOAN_RESULT"
