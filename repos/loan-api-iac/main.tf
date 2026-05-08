@@ -119,7 +119,7 @@ resource "google_bigquery_table" "loan_approval_result" {
   schema = jsonencode([
     { name = "application_id", type = "STRING",    mode = "REQUIRED" },
     { name = "customer_id",    type = "STRING",    mode = "REQUIRED" },
-    { name = "vip_status",     type = "STRING",    mode = "NULLABLE" },
+    { name = "vip_status",     type = "STRING",    mode = "NULLABLE", description = "VIP 門檻調整為 500 萬" },
     { name = "interest_rate",  type = "FLOAT64",   mode = "REQUIRED" },
     { name = "approved",       type = "BOOL",      mode = "REQUIRED" },
     { name = "approved_at",    type = "TIMESTAMP", mode = "REQUIRED" }
