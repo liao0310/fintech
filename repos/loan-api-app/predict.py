@@ -229,9 +229,9 @@ def evaluate_loan(application: LoanApplication) -> LoanDecision:
         approved = False
         rejection_reason = f"申請金額 {application.requested_amount:,.0f} 元超過單筆上限 {MAX_LOAN_AMOUNT:,} 元"
 
-    elif application.requested_amount > application.annual_income * 10:
+    elif application.requested_amount > 5000000:
         approved = False
-        rejection_reason = "申請金額超過年收入 10 倍，風險過高"
+        rejection_reason = "申請金額超過 VIP 門檻 500 萬，需額外審核"
 
     logger.info(
         "核貸決策 | application_id=%s | approved=%s | rate=%.2f%% | vip=%s",
