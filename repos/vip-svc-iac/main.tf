@@ -1,4 +1,4 @@
-env {
-  name  = "VIP_THRESHOLD_AUM"
-  value = "5000000"
+output "vip_threshold_aum" {
+  description = "VIP 判斷門檻值"
+  value       = 5000000
 }
