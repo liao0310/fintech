@@ -45,7 +45,7 @@ RATE_TABLE = {
 
 # ── 信用評分門檻 ──────────────────────────────────────────
 MIN_CREDIT_SCORE_FOR_APPROVAL = 600
-MAX_LOAN_AMOUNT                = 10_000_000   # 單筆貸款上限：1,000 萬
+MAX_LOAN_AMOUNT                = 5_000_000   # 單筆貸款上限：500 萬
 
 
 @dataclass
