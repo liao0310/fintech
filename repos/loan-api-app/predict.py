@@ -55,7 +55,7 @@ class LoanApplication:
     customer_id: str
     requested_amount: float   # 申請金額（新台幣）
     credit_score: int
-    annual_income: float      # 年收入（新台幣）
+    vip_threshold: float = 5000000  # VIP 門檻（新台幣）
 
 
 @dataclass
@@ -170,9 +170,10 @@ def fetch_vip_status(customer_id: str) -> str:
         return "STANDARD"
 
 
-def calculate_interest_rate(vip_status: str, credit_score: int) -> float:
+def calculate_interest_rate(vip_amount: float, credit_score: int) -> float:
     """
-    根據 VIP 等級與信用評分計算貸款利率。
+    根據 VIP 貸款金額與信用評分計算貸款利率。
+    VIP 門檻改為 500 萬。
 
     Args:
         vip_status:   VIP 等級
