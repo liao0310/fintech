@@ -61,17 +61,22 @@ resource "google_cloud_run_v2_service" "loan_api" {
         value = tostring(local.base_rate_standard)
       }
       env {
-        name  = "BQ_TABLE_LOAN_RESULT"
-        value = "loan_approval_result"
-      }
-      env {
-        name  = "BQ_DATASET_ID"
-        value = "lending_ops"
-      }
-      env {
-        name  = "BQ_PROJECT_ID"
-        value = local.project_id
-      }
+env {
+  name  = "CLOUDSQL_INSTANCE_CONNECTION_NAME"
+  value = "${local.project_id}:asia-east1:loan-sql-instance"
+}
+env {
+  name  = "CLOUDSQL_DATABASE_NAME"
+  value = "loan_db"
+}
+env {
+  name  = "CLOUDSQL_USER"
+  value = "loan_user"
+}
+env {
+  name  = "CLOUDSQL_PASSWORD"
+  value = "${var.cloudsql_password}"
+}
       env {
         name  = "SERVICE_ENV"
         value = "production"
@@ -104,26 +109,38 @@ resource "google_cloud_run_service_iam_member" "loan_api_invoke_vip_svc" {
   member   = "serviceAccount:loan-api-sa@${local.project_id}.iam.gserviceaccount.com"
 }
 
-resource "google_project_iam_member" "loan_api_bigquery_writer" {
+resource "google_project_iam_member" "loan_api_cloudsql_client" {
   project = local.project_id
-  role    = "roles/bigquery.dataEditor"
+  role    = "roles/cloudsql.client"
   member  = "serviceAccount:loan-api-sa@${local.project_id}.iam.gserviceaccount.com"
 }
 
 # ── BigQuery Table：核貸結果 ──────────────────────────────────
-resource "google_bigquery_table" "loan_approval_result" {
-  dataset_id = "lending_ops"
-  table_id   = "loan_approval_result"
-  project    = local.project_id
+resource "google_sql_database_instance" "loan_sql_instance" {
+  name             = "loan-sql-instance"
+  database_version = "POSTGRES_14"
+  region           = local.region
+  project          = local.project_id
 
-  schema = jsonencode([
-    { name = "application_id", type = "STRING",    mode = "REQUIRED" },
-    { name = "customer_id",    type = "STRING",    mode = "REQUIRED" },
-    { name = "vip_status",     type = "STRING",    mode = "NULLABLE" },
-    { name = "interest_rate",  type = "FLOAT64",   mode = "REQUIRED" },
-    { name = "approved",       type = "BOOL",      mode = "REQUIRED" },
-    { name = "approved_at",    type = "TIMESTAMP", mode = "REQUIRED" }
-  ])
+  settings {
+    tier = "db-custom-2-7680"
+    ip_configuration {
+      private_network = "projects/${local.project_id}/global/networks/default"
+    }
+  }
+}
+
+resource "google_sql_database" "loan_database" {
+  name     = "loan_db"
+  instance = google_sql_database_instance.loan_sql_instance.name
+  project  = local.project_id
+}
+
+resource "google_sql_user" "loan_user" {
+  name     = "loan_user"
+  instance = google_sql_database_instance.loan_sql_instance.name
+  password = var.cloudsql_password
+  project  = local.project_id
 }
 
 # ── 輸出值 ──────────────────────────────────────────────────
