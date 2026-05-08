@@ -1,1 +1,6 @@
-VIP_THRESHOLD_A = 5_000_000   # 500 萬以上 → VIP_A
+if user_aum > 5_000_000:
+    status = STATUS_VIP_A
+elif user_aum > 1_000_000:
+    status = STATUS_VIP_B
+else:
+    status = STATUS_STANDARD
