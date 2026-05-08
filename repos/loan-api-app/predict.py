@@ -24,13 +24,11 @@ logger = logging.getLogger(__name__)
 # ── 連線設定 ──────────────────────────────────────────────
 VIP_SVC_URL     = os.getenv("VIP_SVC_URL", "https://vip-svc-internal.asia-east1.run.app")
 VIP_SVC_TIMEOUT = int(os.getenv("VIP_SVC_TIMEOUT_SEC", "10"))
-BQ_PROJECT_ID   = (
-    os.getenv("BQ_PROJECT_ID")
-    or os.getenv("GOOGLE_CLOUD_PROJECT")
-    or os.getenv("GCP_PROJECT")
-)
-BQ_DATASET_ID   = os.getenv("BQ_DATASET_ID", "lending_ops")
-BQ_TABLE_NAME   = os.getenv("BQ_TABLE_LOAN_RESULT", "loan_approval_result")
+CLOUDSQL_CONNECTION_STRING = os.getenv("CLOUDSQL_CONNECTION_STRING")
+CLOUDSQL_USER = os.getenv("CLOUDSQL_USER")
+CLOUDSQL_PASSWORD = os.getenv("CLOUDSQL_PASSWORD")
+CLOUDSQL_DBNAME = os.getenv("CLOUDSQL_DBNAME")
+CLOUDSQL_TABLE_NAME = os.getenv("CLOUDSQL_TABLE_LOAN_RESULT", "loan_approval_result")
 
 # ── 利率設定 (%) ──────────────────────────────────────────
 BASE_RATE_VIP_A    = float(os.getenv("BASE_RATE_VIP_A",    "1.5"))
@@ -86,57 +84,56 @@ def _build_http_session() -> requests.Session:
 
 
 _session = _build_http_session()
-_bigquery_client = None
+_cloudsql_conn = None
 
-
-def _get_bigquery_client():
-    """延遲建立 BigQuery client，避免模組載入時就依賴 GCP 環境。"""
-    global _bigquery_client
-
-    if _bigquery_client is not None:
-        return _bigquery_client
-
-    if not BQ_PROJECT_ID:
-        logger.warning("未設定 BQ_PROJECT_ID / GOOGLE_CLOUD_PROJECT，跳過 BigQuery 寫入")
+def _get_cloudsql_connection():
+    """建立並回傳 CloudSQL 連線物件，使用延遲初始化。"""
+    global _cloudsql_conn
+    if _cloudsql_conn is not None:
+        return _cloudsql_conn
+    import pymysql
+    if not CLOUDSQL_CONNECTION_STRING or not CLOUDSQL_USER or not CLOUDSQL_PASSWORD or not CLOUDSQL_DBNAME:
+        logger.warning("未設定 CloudSQL 連線資訊，跳過資料庫寫入")
         return None
-
     try:
-        from google.cloud import bigquery
-    except ImportError:
-        logger.warning("google-cloud-bigquery 尚未安裝，跳過 BigQuery 寫入")
+        _cloudsql_conn = pymysql.connect(
+            host=CLOUDSQL_CONNECTION_STRING,
+            user=CLOUDSQL_USER,
+            password=CLOUDSQL_PASSWORD,
+            database=CLOUDSQL_DBNAME,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True
+        )
+        return _cloudsql_conn
+    except Exception as exc:
+        logger.error("CloudSQL 連線失敗：%s", exc)
         return None
-
-    _bigquery_client = bigquery.Client(project=BQ_PROJECT_ID)
-    return _bigquery_client
 
 
 def persist_loan_decision(decision: LoanDecision) -> None:
-    """將核貸結果寫入 BigQuery，供後續報表與審計分析使用。"""
-    client = _get_bigquery_client()
-    if client is None:
+    """將核貸結果寫入 CloudSQL，供後續報表與審計分析使用。"""
+    conn = _get_cloudsql_connection()
+    if conn is None:
         return
-
-    table_ref = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_NAME}"
-    row = {
-        "application_id": decision.application_id,
-        "customer_id": decision.customer_id,
-        "vip_status": decision.vip_status,
-        "interest_rate": decision.interest_rate,
-        "approved": decision.approved,
-        "approved_at": decision.approved_at.isoformat(),
-    }
-
+    sql = f"""
+    INSERT INTO {CLOUDSQL_TABLE_NAME} (application_id, customer_id, vip_status, interest_rate, approved, approved_at)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    params = (
+        decision.application_id,
+        decision.customer_id,
+        decision.vip_status,
+        decision.interest_rate,
+        decision.approved,
+        decision.approved_at.strftime('%Y-%m-%d %H:%M:%S')
+    )
     try:
-        errors = client.insert_rows_json(table_ref, [row])
+        with conn.cursor() as cursor:
+            cursor.execute(sql, params)
+        logger.info("CloudSQL 寫入完成 | table=%s | application_id=%s", CLOUDSQL_TABLE_NAME, decision.application_id)
     except Exception as exc:
-        logger.error("BigQuery 寫入失敗 | table=%s | application_id=%s | error=%s", table_ref, decision.application_id, exc)
-        return
-
-    if errors:
-        logger.error("BigQuery 寫入失敗 | table=%s | application_id=%s | errors=%s", table_ref, decision.application_id, errors)
-        return
-
-    logger.info("BigQuery 寫入完成 | table=%s | application_id=%s", table_ref, decision.application_id)
+        logger.error("CloudSQL 寫入失敗 | table=%s | application_id=%s | error=%s", CLOUDSQL_TABLE_NAME, decision.application_id, exc)
 
 
 def fetch_vip_status(customer_id: str) -> str:
