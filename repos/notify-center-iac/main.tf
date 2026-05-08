@@ -13,12 +13,13 @@ terraform {
 }
 
 locals {
-  service_name = "notify-center"
-  region       = "asia-east1"
-  project_id   = "esun-fintech-prod"
+  service_name      = "notify-center"
+  region            = "asia-east1"
+  project_id        = "esun-fintech-prod"
 
-  notification_dataset = "engagement_ops"
-  audit_table_name     = "notification_delivery_audit"
+  cloudsql_instance = "notify-center-sql-instance"
+  cloudsql_database = "notify_center_db"
+  audit_table_name  = "notification_delivery_audit"
 }
 
 resource "google_cloud_run_v2_service" "notify_center" {
@@ -46,8 +47,12 @@ resource "google_cloud_run_v2_service" "notify_center" {
         value = "200"
       }
       env {
-        name  = "AUDIT_DATASET_ID"
-        value = local.notification_dataset
+        name  = "CLOUDSQL_INSTANCE"
+        value = local.cloudsql_instance
+      }
+      env {
+        name  = "CLOUDSQL_DATABASE"
+        value = local.cloudsql_database
       }
       env {
         name  = "AUDIT_TABLE_NAME"
@@ -57,7 +62,6 @@ resource "google_cloud_run_v2_service" "notify_center" {
         name  = "SERVICE_ENV"
         value = "production"
       }
-    }
 
     scaling {
       min_instance_count = 1
@@ -66,18 +70,25 @@ resource "google_cloud_run_v2_service" "notify_center" {
   }
 }
 
-resource "google_bigquery_table" "notification_delivery_audit" {
-  dataset_id = local.notification_dataset
-  table_id   = local.audit_table_name
-  project    = local.project_id
+resource "google_sql_database_instance" "notify_center_instance" {
+  name             = local.cloudsql_instance
+  database_version = "POSTGRES_14"
+  region           = local.region
 
-  schema = jsonencode([
-    { name = "message_id",   type = "STRING",    mode = "REQUIRED" },
-    { name = "customer_id",  type = "STRING",    mode = "REQUIRED" },
-    { name = "channel",      type = "STRING",    mode = "REQUIRED" },
-    { name = "template_id",  type = "STRING",    mode = "REQUIRED" },
-    { name = "delivered_at", type = "TIMESTAMP", mode = "REQUIRED" }
-  ])
+  settings {
+    tier = "db-f1-micro"
+  }
+}
+
+resource "google_sql_database" "notify_center_db" {
+  name     = local.cloudsql_database
+  instance = google_sql_database_instance.notify_center_instance.name
+}
+
+resource "google_sql_user" "notify_center_user" {
+  name     = "notify_user"
+  instance = google_sql_database_instance.notify_center_instance.name
+  password = var.db_password
 }
 
 output "notify_center_url" {
