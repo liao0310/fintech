@@ -54,17 +54,22 @@ resource "google_cloud_run_v2_service" "vip_svc" {
         value = local.vip_tier_b_label
       }
       env {
-        name  = "BQ_DATASET"
-        value = "customer_analytics"
-      }
-      env {
-        name  = "BQ_TABLE_VIP_RESULT"
-        value = "vip_classification_result"
-      }
-      env {
-        name  = "BQ_TABLE_AUM_SNAPSHOT"
-        value = "aum_daily_snapshot"
-      }
+env {
+  name  = "CLOUDSQL_CONNECTION_NAME"
+  value = "esun-fintech-prod:asia-east1:vip-db"
+}
+env {
+  name  = "CLOUDSQL_DB_NAME"
+  value = "vip_database"
+}
+env {
+  name  = "CLOUDSQL_TABLE_VIP_RESULT"
+  value = "vip_classification_result"
+}
+env {
+  name  = "CLOUDSQL_TABLE_AUM_SNAPSHOT"
+  value = "aum_daily_snapshot"
+}
       env {
         name  = "SERVICE_ENV"
         value = "production"
@@ -79,36 +84,12 @@ resource "google_cloud_run_v2_service" "vip_svc" {
 }
 
 # ── BigQuery Table：VIP 分類結果 ─────────────────────────────
-resource "google_bigquery_table" "vip_classification_result" {
-  dataset_id = "customer_analytics"
-  table_id   = "vip_classification_result"
-  project    = local.project_id
-
-  schema = jsonencode([
-    { name = "customer_id",   type = "STRING",    mode = "REQUIRED" },
-    { name = "aum_value",     type = "FLOAT64",   mode = "REQUIRED" },
-    { name = "vip_status",    type = "STRING",    mode = "REQUIRED" },
-    { name = "classified_at", type = "TIMESTAMP", mode = "REQUIRED" }
-  ])
-}
-
-# ── BigQuery Table：AUM 每日快照 ──────────────────────────────
-resource "google_bigquery_table" "aum_daily_snapshot" {
-  dataset_id = "customer_analytics"
-  table_id   = "aum_daily_snapshot"
-  project    = local.project_id
-
-  schema = jsonencode([
-    { name = "customer_id",  type = "STRING",  mode = "REQUIRED" },
-    { name = "aum_value",    type = "FLOAT64", mode = "REQUIRED" },
-    { name = "snapshot_date", type = "DATE",   mode = "REQUIRED" }
-  ])
-}
+# CloudSQL 資料庫與資料表管理請另行定義，BigQuery 資源移除
 
 # ── IAM：允許 Cloud Run 存取 BigQuery ─────────────────────────
-resource "google_project_iam_member" "vip_svc_bq_writer" {
+resource "google_project_iam_member" "vip_svc_cloudsql_client" {
   project = local.project_id
-  role    = "roles/bigquery.dataEditor"
+  role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_cloud_run_v2_service.vip_svc.template[0].service_account}"
 }
 
