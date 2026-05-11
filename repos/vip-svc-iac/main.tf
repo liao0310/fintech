@@ -18,7 +18,7 @@ locals {
   project_id   = "esun-fintech-prod"
 
   # VIP 判斷門檻 (AUM 單位：新台幣)
-  vip_threshold_aum = 3000000
+  vip_threshold_aum = 5000000
   vip_tier_a_label  = "VIP_A"
   vip_tier_b_label  = "VIP_B"
 }
